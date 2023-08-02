@@ -32,6 +32,8 @@ go mod init hello-world
 ```
 只能有一个 main package 
 
+goland是go的集成开发环境，ctrl+b跳进函数定义
+
 ### 1.4 运行go工程
 
 ```
@@ -270,7 +272,203 @@ func main() {
 }
 ```
 
+* 公共函数变量首字母大写
 
+在go中，函数和变量首字母大写才能被其他模块使用
+
+公有函数的首字母以大写开头，私有函数的首字母以小写开头。
+
+* 错误捕获处理 defer + recover
+```
+package main
+
+import "fmt"
+
+func main() {
+	e := test()
+	fmt.Println("e的值是", e)
+	fmt.Println("看看能否输出")
+}
+
+func test() int {
+	defer func() {
+		err := recover()
+		if err != nil {
+			fmt.Println("错误是", err)
+		}
+	}()
+	a := 10
+	b := 0
+	return a / b
+}
+```
+
+自定义错误
+```
+package main
+
+import (
+	"errors"
+	"fmt"
+)
+
+func main() {
+	err := test()
+	if err != nil {
+		fmt.Println("错误是", err)
+		panic(err)
+	}
+	fmt.Println("看看能否输出")
+}
+
+func test() error {
+	a := 10
+	b := 0
+	if b == 0 {
+		return errors.New("除数不能为0撒！")
+	} else {
+		fmt.Println("结果是", a/b)
+	}
+	return nil
+}
+```
+
+* 切片
+值类型：复制一份，并不改变原有值
+引用类型： 用同一份，会改变原有值
+
+切片是引用数据类型，改动切片，地址中的值会改变
+```
+package main
+
+import (
+	"fmt"
+)
+
+func main() {
+	var arrayint [6]int = [6]int{0, 1, 2, 3, 4, 5}
+	slice := arrayint[1:3]
+	fmt.Println("slice:", slice)
+	slice[1] = 8
+	fmt.Println("arrayint:", arrayint)
+}
+
+结果
+slice: [1 2]
+arrayint: [0 1 8 3 4 5]
+```
+切片在内存中以结构体的方式储存，3个成员，首地址，切片长度和切片容量
+![](pic/2023-08-02-10-12-01.png)
+
+切片定义方式
+
+切片可以引用某个已经创建好的数组，切片定义好之后必须引用数组或用make开辟了内存地址，才能使用
+切片索引不能越界，
+
+用make函数定义切片，make实际在底层创建了一个不可见的数组
+```
+package main
+
+import (
+	"fmt"
+)
+
+func main() {
+	slice := make([]int, 5, 8)
+	fmt.Println("slice:", slice)
+	fmt.Println("slice的长度", len(slice))
+	fmt.Println("slice的容量", cap(slice))
+}
+
+结果
+slice: [0 0 0 0 0]
+slice的长度 5
+slice的容量 8
+
+```
+
+切片的遍历,切片还可以再切
+```
+package main
+
+import "fmt"
+
+func main() {
+	slice := make([]int, 5, 8)
+	for i := 0; i < len(slice); i++ {
+		slice[i] = i * 10
+	}
+	for i, v := range slice {
+		fmt.Printf("slice[%v]=%v \n", i, v)
+	}
+	slice1 := slice[1:3]
+	fmt.Println("slice1:", slice1)
+}
+
+结果
+slice[0]=0
+slice[1]=10
+slice[2]=20
+slice[3]=30
+slice[4]=40
+slice1: [10 20]
+```
+
+切片的引用数组时的简写方式
+```
+var slice = arr[0:end]  =>    slice := arr[:end]
+var slice = arr[start:len(arr)]  =>    slice := arr[start:]
+var slice = arr[0:len(arr)]  =>    slice := arr[:]
+```
+
+append()函数给slice扩容，会产生一块新地址，不会改老地址里的值
+```
+package main
+
+import "fmt"
+
+func main() {
+	arr := [6]int{0, 1, 2, 3, 4, 5}
+	slice := arr[3:]
+	slice1 := append(slice, 66, 77, 88, 99, 00, 11, 22)
+	slice1[0] = 33
+	fmt.Println("slice1:", slice1)
+	fmt.Println("slice:", slice)
+	slice = append(slice, 66, 77, 88, 99, 00, 11, 22)
+	fmt.Println("slice:", slice)
+	fmt.Printf("slice的地址是：%p\n", &slice)
+	fmt.Printf("slice1的地址是：%p", &slice1)
+}
+
+结果
+slice1: [33 4 5 66 77 88 99 0 11 22]
+slice: [3 4 5]
+slice: [3 4 5 66 77 88 99 0 11 22]
+slice的地址是：0xc000008078
+slice1的地址是：0xc000008090
+```
+
+用...把切片打散成一个个元素,copy函数可以拷贝slice到另一个slice
+必须用slice1...把slice1打散成6，7，8，否则报错，append只接受n个基本类型的参数。
+```
+package main
+
+import "fmt"
+
+func main() {
+	arr := [6]int{0, 1, 2, 3, 4, 5}
+	slice := arr[:5]
+	slice1 := []int{6, 7, 8}
+	slice = append(slice, slice1...)
+	fmt.Println("slice:", slice)
+	slice2 := make([]int, 20)
+	copy(slice2, slice)
+	fmt.Println("slice2:", slice2)
+}
+结果
+slice: [0 1 2 3 4 6 7 8]
+slice2: [0 1 2 3 4 6 7 8 0 0 0 0 0 0 0 0 0 0 0 0]
+```
 
 ## 2. go web 框架 - gin
 
